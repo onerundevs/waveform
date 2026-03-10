@@ -894,7 +894,9 @@ function clearAllLyrics(){
 
 function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// ── AI Lyrics Detection via Claude API ────────────────────────────────────────
+// ── AI Lyrics Detection via OpenAI API ───────────────────────────────────────
+const OPENAI_API_KEY = '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'; // ← replace with your key
+
 async function runAILyrics(){
   const songName=document.getElementById('ai-song-name').value.trim();
   const hint=document.getElementById('ai-lyric-hint').value.trim();
@@ -929,17 +931,19 @@ Example format:
 Return ONLY the raw JSON array, no markdown, no explanation.`;
 
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const resp=await fetch('https://api.openai.com/v1/chat/completions',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
+        'Authorization':`Bearer ${OPENAI_API_KEY}`
       },
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'gpt-4o',
         max_tokens:2000,
-        messages:[{role:'user',content:prompt}]
+        messages:[
+          {role:'system',content:'You are a music lyrics assistant. Always respond with raw JSON only — no markdown, no explanation.'},
+          {role:'user',content:prompt}
+        ]
       })
     });
 
@@ -949,7 +953,7 @@ Return ONLY the raw JSON array, no markdown, no explanation.`;
     }
 
     const data=await resp.json();
-    const raw=(data.content||[]).map(c=>c.text||'').join('').trim();
+    const raw=data.choices?.[0]?.message?.content?.trim()||'';
     // Strip any accidental markdown fences
     const clean=raw.replace(/```[a-z]*\n?/g,'').trim();
     const parsed=JSON.parse(clean);
